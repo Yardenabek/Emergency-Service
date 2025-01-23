@@ -25,7 +25,7 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
     }
 
     @Override
-    public void process(StompFrame frame) {
+    public StompFrame process(StompFrame frame) {
         switch (frame.getCommand()) {
             case "CONNECT":
                 handleConnect(frame);
