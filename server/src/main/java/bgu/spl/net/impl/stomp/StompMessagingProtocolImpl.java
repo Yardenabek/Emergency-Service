@@ -28,22 +28,17 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
     public StompFrame process(StompFrame frame) {
         switch (frame.getCommand()) {
             case "CONNECT":
-                handleConnect(frame);
-                break;
+                return handleConnect(frame);
             case "SUBSCRIBE":
-                handleSubscribe(frame);
-                break;
+                return handleSubscribe(frame);
             case "SEND":
-                handleSend(frame);
-                break;
+                return handleSend(frame);
             case "UNSUBSCRIBE":
-                handleUnsubscribe(frame);
-                break;
+                return handleUnsubscribe(frame);
             case "DISCONNECT":
-                handleDisconnect(frame);
-                break;
+                return handleDisconnect(frame);
             default:
-                sendError("Unknown command: " + frame.getCommand());
+                return sendError("Unknown command: " + frame.getCommand());
         }
     }
 
@@ -53,10 +48,9 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
     }
 
     // Handle CONNECT Command
-    private void handleConnect(StompFrame frame) {
+    private StompFrame handleConnect(StompFrame frame) {
         if (loggedIn) {
-            sendError("Client is already logged in.");
-            return;
+            return sendError("Client is already logged in.");
         }
 
         String login = frame.getHeaders().get("login");
@@ -72,25 +66,23 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
                     map,
                     ""
             );
-            sendFrame(connectedFrame);
+            return connectedFrame;
         } else {
-            sendError("Invalid username or password.");
+            return sendError("Invalid username or password.");
         }
     }
 
     // Handle SUBSCRIBE Command
-    private void handleSubscribe(StompFrame frame) {
+    private StompFrame handleSubscribe(StompFrame frame) {
         if (!loggedIn) {
-            sendError("Client is not logged in.");
-            return;
+            return sendError("Client is not logged in.");
         }
 
         String destination = frame.getHeaders().get("destination");
         String id = frame.getHeaders().get("id");
 
         if (destination == null || id == null) {
-            sendError("Missing required headers for SUBSCRIBE.");
-            return;
+            return sendError("Client is not logged in.");
         }
 
         subscriptions.put(id, destination);
@@ -101,36 +93,44 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
                 map,
                 ""
         );
-        sendFrame(receiptFrame);
+        return receiptFrame;
     }
 
     // Handle SEND Command
-    private void handleSend(StompFrame frame) {
+    private StompFrame handleSend(StompFrame frame) {
         if (!loggedIn) {
-            sendError("Client is not logged in.");
-            return;
+            return sendError("Client is not logged in.");
         }
-
+    
         String destination = frame.getHeaders().get("destination");
-        if (destination == null || !subscriptions.containsValue(destination)) {
-            sendError("You are not subscribed to the topic: " + destination);
-            return;
+        if (destination == null || destination.isEmpty()) {
+            return sendError("SEND frame is missing a destination header.");
         }
-
+    
+        // Forward the message to all clients subscribed to the topic
         connections.send(destination, frame);
+    
+        // Optionally, you can return a RECEIPT frame if a receipt header exists
+        String receiptId = frame.getHeaders().get("receipt");
+        if (receiptId != null) {
+            Map<String, String> map = new HashMap<>();
+            map.put("receipt-id", receiptId);
+            return new StompFrame("RECEIPT", map, "");
+        }
+    
+        return null; // No response is needed unless a receipt is requested
     }
+    
 
     // Handle UNSUBSCRIBE Command
-    private void handleUnsubscribe(StompFrame frame) {
+    private StompFrame handleUnsubscribe(StompFrame frame) {
         if (!loggedIn) {
-            sendError("Client is not logged in.");
-            return;
+            return sendError("Client is not logged in.");
         }
 
         String id = frame.getHeaders().get("id");
         if (id == null || !subscriptions.containsKey(id)) {
-            sendError("Invalid subscription ID: " + id);
-            return;
+            return sendError("Invalid subscription ID: " + id);
         }
 
         subscriptions.remove(id);
@@ -141,25 +141,14 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
                 map,
                 ""
         );
-        sendFrame(receiptFrame);
+        return receiptFrame;
     }
 
     // Handle DISCONNECT Command
-    private void handleDisconnect(StompFrame frame) {
+    private StompFrame handleDisconnect(StompFrame frame) {
         if (!loggedIn) {
-            sendError("Client is not logged in.");
-            return;
+            return sendError("Client is not logged in.");
         }
-
-        String receiptId = frame.getHeaders().get("receipt");
-        Map<String, String> map = new HashMap<>();
-        map.put("receipt-id", receiptId);
-        StompFrame receiptFrame = new StompFrame(
-                "RECEIPT",
-                map,
-                ""
-        );
-        sendFrame(receiptFrame);
 
         for (String topic : subscriptions.values()) {
             Map<String, String> tempmap = new HashMap<>();
@@ -173,14 +162,24 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
 
         shouldTerminate = true;
         connections.disconnect(connectionId);
+
+        String receiptId = frame.getHeaders().get("receipt");
+        Map<String, String> map = new HashMap<>();
+        map.put("receipt-id", receiptId);
+        StompFrame receiptFrame = new StompFrame(
+                "RECEIPT",
+                map,
+                ""
+        );
+        return receiptFrame;
     }
 
     // Utility Methods
-    private void sendFrame(StompFrame frame) {
-        connections.send(connectionId, frame);
-    }
+    // private void sendFrame(StompFrame frame) {
+    //     connections.send(connectionId, frame);
+    // }
 
-    private void sendError(String message) {
+    private StompFrame sendError(String message) {
         Map<String, String> map = new HashMap<>();
         map.put("message", message);
         StompFrame errorFrame = new StompFrame(
@@ -188,7 +187,7 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<StompF
                 map,
                 ""
         );
-        sendFrame(errorFrame);
+        return errorFrame;
     }
 
     private boolean isValidUser(String login, String passcode) {
