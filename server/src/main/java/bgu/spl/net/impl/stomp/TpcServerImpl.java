@@ -15,8 +15,8 @@ public class TpcServerImpl extends BaseServer<StompFrame>{
 
     @Override
     protected void execute(BlockingConnectionHandler<StompFrame> handler) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'execute'");
+        // Create a new thread for the handler and start it
+        new Thread(handler).start();
     }
     
 }
