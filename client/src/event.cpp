@@ -8,7 +8,6 @@
 #include <sstream>
 #include <cstring>
 
-#include "../include/keyboardInput.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -66,52 +65,41 @@ Event::Event(const std::string &frame_body): channel_name(""), city(""),
                                              name(""), date_time(0), description(""), general_information(),
                                              eventOwnerUser("")
 {
-    stringstream ss(frame_body);
-    string line;
-    string eventDescription;
-    map<string, string> general_information_from_string;
+    std::stringstream ss(frame_body);
+    std::string line;
+    std::string eventDescription;
+    std::map<std::string, std::string> general_information_from_string;
     bool inGeneralInformation = false;
-    while(getline(ss,line,'\n')){
-        vector<string> lineArgs;
-        if(line.find(':') != string::npos) {
-            split_str(line, ':', lineArgs);
-            string key = lineArgs.at(0);
-            string val;
-            if(lineArgs.size() == 2) {
-                val = lineArgs.at(1);
-            }
-            if(key == "user") {
-                eventOwnerUser = val;
-            }
-            if(key == "channel name") {
-                channel_name = val;
-            }
-            if(key == "city") {
-                city = val;
-            }
-            else if(key == "event name") {
-                name = val;
-            }
-            else if(key == "date time") {
-                date_time = std::stoi(val);
-            }
-            else if(key == "general information") {
-                inGeneralInformation = true;
-                continue;
-            }
-            else if(key == "description") {
-                while(getline(ss,line,'\n')) {
-                    eventDescription += line + "\n";
-                }
-                description = eventDescription;
-            }
 
-            if(inGeneralInformation) {
+    while (std::getline(ss, line, '\n')) {
+        std::vector<std::string> lineArgs;
+        splitInput(line, ':', lineArgs); // שימוש בפונקציה מ-keyboardInput
+        if (!lineArgs.empty()) {
+            std::string key = lineArgs.at(0);
+            std::string val = (lineArgs.size() == 2) ? lineArgs.at(1) : "";
+
+            if (key == "user") {
+                eventOwnerUser = val;
+            } else if (key == "channel name") {
+                channel_name = val;
+            } else if (key == "city") {
+                city = val;
+            } else if (key == "event name") {
+                name = val;
+            } else if (key == "date time") {
+                date_time = std::stoi(val);
+            } else if (key == "general information") {
+                inGeneralInformation = true;
+            } else if (key == "description") {
+                eventDescription += val + "\n";
+            } else if (inGeneralInformation) {
                 general_information_from_string[key.substr(1)] = val;
             }
         }
     }
+
     general_information = general_information_from_string;
+    description = eventDescription;
 }
 
 names_and_events parseEventsFile(std::string json_path)

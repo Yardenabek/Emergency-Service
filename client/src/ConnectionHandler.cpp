@@ -68,7 +68,7 @@ bool ConnectionHandler::getLine(std::string &line) {
 	return getFrameAscii(line, '\n');
 }
 
-bool ConnectionHandler::sendLine(std::string &line) {
+bool ConnectionHandler::sendLine(const std::string &line) {
 	return sendFrameAscii(line, '\n');
 }
 
