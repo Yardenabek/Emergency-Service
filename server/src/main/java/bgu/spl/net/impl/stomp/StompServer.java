@@ -16,6 +16,7 @@ public class StompServer {
 
             switch (serverType) {
                 case "tpc":
+                    System.out.println("Initializing a TPC server");
                     Server.threadPerClient(
                             port, // The port
                             StompMessagingProtocolImpl::new, // Protocol factory
@@ -24,6 +25,7 @@ public class StompServer {
                     break;
 
                 case "reactor":
+                System.out.println("Initializing a Reactor server");
                     Server.reactor(
                             Runtime.getRuntime().availableProcessors(), // Number of threads
                             port, // The port

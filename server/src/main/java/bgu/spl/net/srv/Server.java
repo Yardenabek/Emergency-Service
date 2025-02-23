@@ -28,6 +28,7 @@ public interface Server<T> extends Closeable {
         return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory) {
             @Override
             protected void execute(BlockingConnectionHandler<T>  handler) {
+                System.out.println("Starting a new thread for client");
                 new Thread(handler).start();
             }
         };
